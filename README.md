@@ -1,0 +1,2 @@
+My personal static kakoune
+==========================
