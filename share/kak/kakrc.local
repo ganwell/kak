@@ -1,5 +1,15 @@
 colorscheme solarized-dark-termcolors
 
+# Smarttab
+require-module smarttab
+set-option global softtabstop 4
+hook global BufCreate .* expandtab
+hook global BufCreate .*APKBUILD %{
+    noexpandtab
+    set-option buffer tabstop 8
+}
+hook global WinSetOption filetype=(makefile|gas) noexpandtab
+
 # Search
 require-module search-highlight
 hook global WinCreate .* %{
@@ -7,6 +17,7 @@ hook global WinCreate .* %{
 }
 
 # Alias and find
+require-module snippets
 require-module core-aliases
 require-module custom-finders
 alias global ged git-edit
