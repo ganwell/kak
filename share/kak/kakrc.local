@@ -1,0 +1,110 @@
+colorscheme solarized-dark-termcolors
+
+# Search
+require-module search-highlight
+hook global WinCreate .* %{
+      search-highlighter-enable
+}
+
+# Alias and find
+require-module core-aliases
+require-module custom-finders
+alias global ged git-edit
+alias global fed file-edit
+
+# Color mark
+require-module color-mark
+map global normal <A-,> ':mark-cursor<ret>' -docstring 'mark word under cursor'
+map global normal <A-.> ':mark-pop<ret>' -docstring 'clear a mark from ring'
+
+# History
+require-module cmd-history
+alias global eh execute-history
+
+# Switching mode stores selection
+hook global ModeChange pop:insert:normal %{ execute-keys <C-s> }
+
+# Tabs and line-numbers
+set-option global autoreload yes
+set-option global tabstop 4
+add-highlighter global/line-numbers number-lines -relative -hlcursor
+add-highlighter global/ show-matching
+
+# Default options
+set-option global ui_options ncurses_enable_mouse=false
+set-option global idle_timeout 100
+
+# Faces
+set-face global search bright-black,cyan+fg
+hook global WinCreate .* %{ set-face global Information bright-green,white }
+hook global WinCreate .* %{ set-face global LineNumberCursor bright-black,bright-blue }
+
+# Mappings
+map -docstring "push current selections in jump list" global normal <C-y> <C-s>
+map -docstring "search next word" global normal <C-e> <C-s><A-i>w*n9999vh
+map -docstring "select next current search pattern match" global normal n n9999vh
+map -docstring "select previous current search pattern match" global normal <A-n> <A-n>9999vh
+map -docstring "move down" global normal j j9999vh
+map -docstring "move up" global normal k k9999vh
+map -docstring "extend with next current regex match" global normal ^ '?<ret>'
+
+# User mode
+map -docstring "grep word under cursor" global user g '<A-i>w:grep %val{selection}<ret>'
+map -docstring "grep symbol under cursor" global user f '<A-i>w:grep "\b%val{selection}\b"<ret>'
+map -docstring "grep book-definition under cursor" global user h '<A-i>w:grep "\*%val{selection}\*"<ret>'
+map -docstring "wrap text" global user w '|par w$kak_opt_autowrap_column<ret>'
+map -docstring "wrap text" global user W '<A-a>p|par w$kak_opt_autowrap_column<ret>'
+map -docstring "select python indent block" global user b '<A-i>i<A-;>K{bGh'
+map -docstring "next merge conflict" global user n ':kakmerge-next-conflict<ret>'
+map -docstring "validate merge" global user m ':kakmerge-done<ret>'
+map -docstring "abort merge" global user a ':kakmerge-abort<ret>'
+map -docstring "toggle line numbers" global user l ':toggle-line-numbers<ret>'
+map -docstring "toggle soft wrap" global user r ':toggle-soft-wrap<ret>'
+map -docstring "jump to" global user j ':fzf-mode<ret>s'
+map -docstring "replace bad spelling" global user r '<A-i>w:spell-suggest<ret>'
+
+# Project
+declare-option -hidden str project_client
+define-command -docstring "make project view" project %{
+    set-option global project_client %val{client}
+    split-horizontal
+    tmux-repl-vertical
+    tmux-focus %opt{project_client}
+    tmux-repl-vertical
+}
+
+# Toggle
+define-command -docstring "toggle soft wrap" toggle-soft-wrap %{ try %{
+    add-highlighter global/softwrap wrap -word -indent -marker "…       "
+    echo "soft wrap: on"
+} catch %{
+    remove-highlighter global/softwrap
+    echo "soft wrap: off"
+}}
+define-command -docstring "toggle line numbers" toggle-line-numbers %{ try %{
+    add-highlighter global/line-numbers number-lines -relative -hlcursor
+} catch %{
+    remove-highlighter global/line-numbers
+}}
+
+# Grep
+declare-option -hidden str default_grep_cmd
+evaluate-commands %sh{
+    if command -v ag > /dev/null; then
+        if [ -n "$KAK_BOOK" ]; then
+            echo "set-option global default_grep_cmd 'ag -i --follow --column --'"
+        else
+            echo "set-option global default_grep_cmd 'ag --column --'"
+        fi
+    else
+        echo "set-option global default_grep_cmd 'grep -RHn --'"
+    fi
+}
+set-option global grepcmd %opt{default_grep_cmd}
+define-command -docstring "grep using git-grep" -params .. git-grep %{
+    set-option global grepcmd 'git grep -n --column --'
+    grep %arg{@}
+    set-option global grepcmd %opt{default_grep_cmd}
+}
+
+hook global BufCreate '\*scratch\*' %{ exec '%d' }
